@@ -7,10 +7,13 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/users")
 @CrossOrigin(origins = "http://localhost:5173")
+@Tag(name = "Usuarios", description = "Operaciones para gestión de usuarios y administración")
 public class UsuariosController {
 
     private final UsuariosRepository repo;
@@ -23,6 +26,7 @@ public class UsuariosController {
     }
 
     // Eliminar usuario por id — requiere token de administrador en header X-ADMIN-TOKEN
+    @Operation(summary = "Eliminar usuario (admin)", description = "Elimina un usuario por id. Requiere header X-ADMIN-TOKEN con token de administrador.")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id, @RequestHeader(value = "X-ADMIN-TOKEN", required = false) String token) {
         if (token == null || !token.equals(adminToken)) {
@@ -96,6 +100,7 @@ public class UsuariosController {
     }
 
     // Listar usuarios (información pública para el panel admin)
+    @Operation(summary = "Listar usuarios", description = "Devuelve una lista de usuarios (información pública para panel admin).")
     @GetMapping
     public ResponseEntity<List<UsuarioDto>> listUsers() {
         List<UsuarioDto> users = repo.findAll().stream().map(u -> new UsuarioDto(
@@ -105,6 +110,7 @@ public class UsuariosController {
     }
 
     // Obtener usuario por id (público, usado por UI para comprobar rol)
+    @Operation(summary = "Obtener usuario por id", description = "Devuelve la información pública del usuario indicado por id.")
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioDto> getUserById(@PathVariable Long id) {
         return repo.findById(id).map(u -> new UsuarioDto(
@@ -114,6 +120,7 @@ public class UsuariosController {
 
     // Obtener el usuario 'actual' por id pasado como query param. Esto permite
     // que el frontend consulte /users/me?id=123 sin exponer la lista completa.
+    @Operation(summary = "Usuario actual (por id)", description = "Devuelve el usuario 'actual' cuando se consulta con ?id=123")
     @GetMapping("/me")
     public ResponseEntity<UsuarioDto> getCurrentUser(@RequestParam(value = "id", required = false) Long id) {
         if (id == null) return ResponseEntity.badRequest().build();
@@ -123,6 +130,7 @@ public class UsuariosController {
     }
 
     // Actualizar flag isAdmin de un usuario (requiere X-ADMIN-TOKEN)
+    @Operation(summary = "Actualizar rol admin", description = "Actualiza el flag isAdmin de un usuario. Requiere X-ADMIN-TOKEN.")
     @PutMapping("/{id}/admin")
     public ResponseEntity<?> setAdmin(@PathVariable Long id, @RequestBody(required = false) java.util.Map<String, Object> body,
                                       @RequestHeader(value = "X-ADMIN-TOKEN", required = false) String token) {

@@ -40,7 +40,7 @@ public class Post {
     @Builder.Default
     @ElementCollection
     @CollectionTable(name = "post_likes", joinColumns = @JoinColumn(name = "post_id"))
-    @Column(name = "user")
+    @Column(name = "user_id")
     private List<String> likes = new ArrayList<>();
 
     @Builder.Default
