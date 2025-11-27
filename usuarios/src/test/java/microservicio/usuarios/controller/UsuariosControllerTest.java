@@ -28,6 +28,9 @@ public class UsuariosControllerTest {
 
     @MockBean
     private UsuariosRepository repo;
+    
+    @MockBean
+    private microservicio.usuarios.repository.RoleRepository roleRepo;
 
     @Test
     public void listUsers_deberiaRetornarListaVaciaOConUsuarios() throws Exception {

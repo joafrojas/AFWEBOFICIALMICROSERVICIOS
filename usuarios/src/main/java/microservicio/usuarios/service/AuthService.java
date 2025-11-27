@@ -6,6 +6,7 @@ import microservicio.usuarios.dto.RegisterRequest;
 import microservicio.usuarios.model.Rol;
 import microservicio.usuarios.model.Usuarios;
 import microservicio.usuarios.repository.UsuariosRepository;
+import microservicio.usuarios.repository.RoleRepository;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,14 +20,16 @@ public class AuthService {
 
     private final UsuariosRepository repo;
     private final PasswordEncoder encoder;
+    private final RoleRepository roleRepo;
 
     // El token de administrador se lee desde application.properties
     @org.springframework.beans.factory.annotation.Value("${app.admin.token:}")
     private String adminToken;
 
-    public AuthService(UsuariosRepository repo, PasswordEncoder encoder) {
+    public AuthService(UsuariosRepository repo, PasswordEncoder encoder, RoleRepository roleRepo) {
         this.repo = repo;
         this.encoder = encoder;
+        this.roleRepo = roleRepo;
     }
 
     public String register(RegisterRequest req) {
@@ -35,16 +38,19 @@ public class AuthService {
         if (repo.existsByCorreo(req.getCorreo())) return "Correo ya registrado";
         if (repo.existsByNombreUsuario(req.getNombreUsuario())) return "Usuario ya registrado";
 
-        Rol rol = Rol.ROLE_USER;
         boolean isAdminFlag = false;
-
+        final String roleName;
         if (req.getCorreo().toLowerCase().endsWith("@asfaltofashion.cl")) {
             if (!adminToken.equals(req.getAdminToken()))
                 return "Token de administrador inválido";
-
-            rol = Rol.ROLE_ADMIN;
+            roleName = "ROLE_ADMIN";
             isAdminFlag = true;
+        } else {
+            roleName = "ROLE_USER";
         }
+
+    // find or create role entity
+    Rol roleEntity = roleRepo.findByName(roleName).orElseGet(() -> roleRepo.save(Rol.builder().name(roleName).build()));
 
     Usuarios user = Usuarios.builder()
                 .rut(req.getRut())
@@ -53,7 +59,7 @@ public class AuthService {
                 .correo(req.getCorreo())
                 .nombreUsuario(req.getNombreUsuario())
                 .password(encoder.encode(req.getPassword()))
-        .rol(rol)
+        .roleEntity(roleEntity)
         .isAdmin(isAdminFlag)
                 .build();
 
@@ -72,6 +78,6 @@ public class AuthService {
         String token = UUID.randomUUID().toString();
         // Devolver también correo, fecha de nacimiento e id para que el frontend tenga
         // datos completos del usuario al iniciar sesión.
-        return new AuthResponse(token, user.getNombreUsuario(), user.isAdmin(), user.getCreatedAt(), user.getCorreo(), user.getFechaNac(), user.getId());
+        return new AuthResponse(token, user.getNombreUsuario(), user.isAdmin(), user.getRoleEntity() != null ? user.getRoleEntity().getName() : null, user.getCreatedAt(), user.getCorreo(), user.getFechaNac(), user.getId());
     }
 }

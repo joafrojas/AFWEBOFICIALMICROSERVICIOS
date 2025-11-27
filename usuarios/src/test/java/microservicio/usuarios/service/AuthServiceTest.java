@@ -26,6 +26,9 @@ class AuthServiceTest {
 
     @Mock
     private PasswordEncoder encoder;
+    
+    @Mock
+    private microservicio.usuarios.repository.RoleRepository roleRepo;
 
     @InjectMocks
     private AuthService authService;

@@ -2,6 +2,7 @@ package microservicio.usuarios.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import jakarta.persistence.JoinColumn;
 
 @Entity
 @Table(name = "usuarios", uniqueConstraints = {
@@ -43,10 +44,9 @@ public class Usuarios {
     @Column(name = "is_admin", nullable = false)
     private boolean isAdmin = false;
 
-    @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rol", nullable = false, length = 50)
-    private Rol rol = Rol.ROLE_USER;
+    @ManyToOne
+    @JoinColumn(name = "role_id")
+    private Rol roleEntity;
     
     @Column(name = "created_at")
     private String createdAt;

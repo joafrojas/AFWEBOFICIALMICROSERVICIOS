@@ -11,6 +11,7 @@ public class AuthResponse {
     private String token;
     private String username;
     private boolean isAdmin;
+    private String rol;
     private String createdAt;
     private String correo;
     private String fechaNac;

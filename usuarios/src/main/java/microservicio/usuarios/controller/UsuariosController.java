@@ -1,6 +1,7 @@
 package microservicio.usuarios.controller;
 
 import microservicio.usuarios.repository.UsuariosRepository;
+import microservicio.usuarios.repository.RoleRepository;
 import microservicio.usuarios.dto.UsuarioDto;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import microservicio.usuarios.model.Rol;
 
 @RestController
 @RequestMapping("/users")
@@ -17,12 +19,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class UsuariosController {
 
     private final UsuariosRepository repo;
+    private final RoleRepository roleRepo;
 
     @Value("${app.admin.token:}")
     private String adminToken;
 
-    public UsuariosController(UsuariosRepository repo) {
+    public UsuariosController(UsuariosRepository repo, RoleRepository roleRepo) {
         this.repo = repo;
+        this.roleRepo = roleRepo;
     }
 
     // Eliminar usuario por id — requiere token de administrador en header X-ADMIN-TOKEN
@@ -104,7 +108,9 @@ public class UsuariosController {
     @GetMapping
     public ResponseEntity<List<UsuarioDto>> listUsers() {
         List<UsuarioDto> users = repo.findAll().stream().map(u -> new UsuarioDto(
-                u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(), u.getCreatedAt()
+                u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(),
+                u.getRoleEntity() != null ? u.getRoleEntity().getName() : null,
+                u.getCreatedAt()
         )).collect(Collectors.toList());
         return ResponseEntity.ok(users);
     }
@@ -114,7 +120,9 @@ public class UsuariosController {
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioDto> getUserById(@PathVariable Long id) {
         return repo.findById(id).map(u -> new UsuarioDto(
-                u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(), u.getCreatedAt()
+                u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(),
+                u.getRoleEntity() != null ? u.getRoleEntity().getName() : null,
+                u.getCreatedAt()
         )).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
@@ -125,7 +133,9 @@ public class UsuariosController {
     public ResponseEntity<UsuarioDto> getCurrentUser(@RequestParam(value = "id", required = false) Long id) {
         if (id == null) return ResponseEntity.badRequest().build();
         return repo.findById(id).map(u -> new UsuarioDto(
-                u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(), u.getCreatedAt()
+            u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(),
+            u.getRoleEntity() != null ? u.getRoleEntity().getName() : null,
+            u.getCreatedAt()
         )).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
@@ -148,8 +158,24 @@ public class UsuariosController {
                 next = !u.isAdmin();
             }
             u.setAdmin(next);
+            // actualizar la relación de rol (ROLE_ADMIN / ROLE_USER)
+            String desired = next ? "ROLE_ADMIN" : "ROLE_USER";
+            var maybeRole = roleRepo.findByName(desired);
+            if (maybeRole.isPresent()) {
+                u.setRoleEntity(maybeRole.get());
+            } else {
+                // intentar crear el rol si no existe
+                Rol r = Rol.builder().name(desired).build();
+                roleRepo.save(r);
+                u.setRoleEntity(r);
+            }
             repo.save(u);
-            return ResponseEntity.ok().build();
+            // return the updated user DTO so frontend can sync immediately
+            var dto = new microservicio.usuarios.dto.UsuarioDto(
+                    u.getId(), u.getRut(), u.getNombre(), u.getFechaNac(), u.getCorreo(), u.getNombreUsuario(), u.isAdmin(),
+                    u.getRoleEntity() != null ? u.getRoleEntity().getName() : null, u.getCreatedAt()
+            );
+            return ResponseEntity.ok(dto);
         }).orElse(ResponseEntity.notFound().build());
     }
 }
